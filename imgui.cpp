@@ -9233,8 +9233,22 @@ void ImGui::ClosePopupsOverWindow(ImGuiWindow* ref_window, bool restore_focus_to
     if (g.OpenPopupStack.Size == 0)
         return;
 
-    // Don't close our own child popup windows.
-    int popup_count_to_keep = 0;
+    //NOTE: THIS IS A HACKED IN CHANGE!  SEE https://github.com/ocornut/imgui/issues/3595
+    int popup_count_to_keep;
+    for (popup_count_to_keep = g.OpenPopupStack.Size - 1; popup_count_to_keep >= 0; popup_count_to_keep--)
+    {
+        ImGuiPopupData& popup = g.OpenPopupStack[popup_count_to_keep];
+        if (!popup.Window)
+            continue;
+        IM_ASSERT((popup.Window->Flags & ImGuiWindowFlags_Popup) != 0);
+        if (popup.Window->Flags & ImGuiWindowFlags_Modal)
+        {
+            popup_count_to_keep++;
+            break;
+        }
+    }
+
+    popup_count_to_keep = ImMax(popup_count_to_keep, 0);
     if (ref_window)
     {
         // Find the highest popup which is a descendant of the reference window (generally reference window = NavWindow)
