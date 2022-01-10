@@ -771,6 +771,10 @@ static bool ImFontAtlasBuildWithFreeType(ImFontAtlas* atlas)
     bool ret = ImFontAtlasBuildWithFreeTypeEx(ft_library, atlas, atlas->FontBuilderFlags);
     FT_Done_Library(ft_library);
 
+    //VERY HACKY - make sure custom glyphs are in.
+    void _ecl_rasterizeGlyphs(ImFontAtlas* atlas);
+    _ecl_rasterizeGlyphs(atlas);
+
     return ret;
 }
 
