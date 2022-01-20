@@ -73,30 +73,53 @@ Breaking Changes:
 Other changes:
 (FIXME: This need a fuller explanation!)
 
-- Added ImGuiPlatformIO structure and GetPlatformIO().
-  - Similarly to ImGuiIO and GetIO(), this structure is the main point of communication for backends supporting multi-viewports.
-  - Backend sets functions in ImGuiPlatformIO to manipulate platform windows.
-  - ImGuiPlatformIO::Monitors is a list of platform monitors (input from backend)
-  - ImGuiPlatformIO::Viewports is a list of viewports (output from dear imgui)
-- Added ImGuiPlatformMonitor to feed OS monitor information in the ImGuiPlatformIO::Monitors.
-- Added GetWindowViewport(), SetNextWindowViewport().
-- Added GetWindowDpiScale().
-- Added GetOverlayDrawList(ImGuiViewport* viewport).
-  The no-parameter version of GetOverlayDrawList() return the overlay for the current window's viewport.
-- Added UpdatePlatformWindows(), RenderPlatformWindowsDefault(), DestroyPlatformWindows() for usage in application setup.
-- Added FindViewportByID(), FindViewportByPlatformHandle() for usage by backends.
-- Added ImGuiConfigFlags_ViewportsEnable configuration flag and other viewport options.
-- Added io.ConfigViewportsNoAutoMerge option.
-- Added io.ConfigViewportsNoTaskBarIcon option.
-- Added io.ConfigViewportsNoDecoration option.
-- Added io.ConfigViewportsNoDefaultParent option.
-- Added ImGuiBackendFlags_PlatformHasViewports, ImGuiBackendFlags_RendererHasViewports, ImGuiBackendFlags_HasMouseHoveredViewport backend flags.
-- Added io.MouseHoveredViewport (optional _even_ for multi-viewport support, tied to ImGuiBackendFlags_HasMouseHoveredViewport flag).
-- Expanded ImGuiViewport structure, ImGuiViewportFlags flags.
-- Added ImGuiWindowClass and SetNextWindowClass() for passing viewport related hints to the OS/platform back-end.
-- Examples: Renderer: OpenGL2, OpenGL3, DirectX9, DirectX10, DirectX11, DirectX12, Vulkan: Added support for multi-viewports.
-- Examples: Platforms: Win32, GLFW, SDL2: Added support for multi-viewports.
-  Note that Linux/Mac still have inconsistent support for multi-viewports. If you want to help see https://github.com/ocornut/imgui/issues/2117.
+Other Changes:
+
+- IO: Added event based input queue API, which now trickles events to support low framerates. [@thedmd, @ocornut]
+  Previously the most common issue case (button presses in low framerates) was handled by backend. This is now
+  handled by core automatically for all kind of inputs. (#4858, #2787, #1992, #3383, #2525, #1320)
+- Fixed a situation where CTRL+Tab or Modal can occasionally lead to the creation of ImDrawCmd with zero triangles,
+  which would makes the draw operation of some backends assert (e.g. Metal with debugging). (#4857)
+- Popups: Fixed a regression crash when a new window is created after a modal on the same frame. (#4920) [@rokups]
+- Tables, ImDrawListSplitter: Fixed erroneously stripping trailing ImDrawList::AddCallback() when submitted in
+  last column or last channel and when there are no other drawing operation. (#4843, #4844) [@hoffstadt]
+- Tables: Fixed positioning of Sort icon on right-most column with some settings (not resizable + no borders). (#4918).
+- Sliders, Drags: Fixed text input of values with a leading sign, common when using a format enforcing sign. (#4917)
+- Platform IME: changed io.ImeSetInputScreenPosFn() to io.SetPlatformImeDataFn() API,
+  now taking a ImGuiPlatformImeData structure which we can more easily extend in the future.
+- Platform IME: moved io.ImeWindowHandle to GetMainViewport()->PlatformHandleRaw.
+- Platform IME: add ImGuiPlatformImeData::WantVisible, hide IME composition window when not used. (#2589) [@actboy168]
+- Platform IME: add ImGuiPlatformImeData::InputLineHeight. (#3113) [@liuliu]
+- Platform IME: [windows] call ImmSetCandidateWindow() to position candidate window.
+- Backends: GLFW: Pass localized keys (matching keyboard layout). Fix e.g. CTRL+A, CTRL+Z, CTRL+Y shortcuts.
+  We are now converting GLFW untranslated keycodes back to translated keycodes in order to match the behavior of every
+  other backend, and facilitate the use of GLFW with lettered-shortcuts API. (#456, #2625)
+- Backends: GLFW: Submit keys using io.AddKeyEvent(). Submit keymods using io.AddKeyModsEvent() at the same time. (#2625)
+- Backends: GLFW: Submit mouse data using io.AddMousePosEvent(), AddMouseButtonEvent(), AddMouseWheelEvent() functions. (#4858)
+- Backends: GLFW: Update mouse position using glfwSetCursorPosCallback() + fallback when focused but not hovered/captured.
+- Backends: Win32: Submit keys using io.AddKeyEvent(). Submit keymods using io.AddKeyModsEvent() at the same time. (#2625)
+- Backends: Win32: Update mouse position using WM_MOUSEMOVE/WM_MOUSELEAVE + fallback when focused but not hovered/captured.
+- Backends: Win32: Submit mouse data using io.AddMousePosEvent(), AddMouseButtonEvent(), AddMouseWheelEvent() functions. (#4858)
+- Backends: Win32: Maintain a MouseButtonsDown mask instead of using ImGui::IsAnyMouseDown() which will be obsoleted.
+- Backends: SDL: Pass localized keys (matching keyboard layout). Fix e.g. CTRL+A, CTRL+Z, CTRL+Y shortcuts.
+- Backends: SDL: Submit keys using io.AddKeyEvent(). Submit keymods using io.AddKeyModsEvent() at the same time. (#2625)
+- Backends: SDL: Update mouse position using SDL_MOUSEMOTION/SDL_WINDOWEVENT_LEAVE + fallback when focused but not hovered/captured.
+- Backends: SDL: Submit mouse data using io.AddMousePosEvent(), AddMouseButtonEvent(), AddMouseWheelEvent() functions. (#4858)
+- Backends: SDL: Maintain a MouseButtonsDown mask instead of using ImGui::IsAnyMouseDown() which will be obsoleted.
+- Backends: Allegro5: Submit keys using io.AddKeyEvent(). Submit keymods using io.AddKeyModsEvent() at the same time. (#2625)
+- Backends: Allegro5: Submit mouse data using io.AddMousePosEvent(), AddMouseButtonEvent(), AddMouseWheelEvent() functions. (#4858)
+- Backends: Android, GLUT, OSX: Submit keys using io.AddKeyEvent(). Submit keymods using io.AddKeyModsEvent() at the same time. (#2625)
+- Backends: Android, GLUT, OSX: Submit mouse data using io.AddMousePosEvent(), AddMouseButtonEvent(), AddMouseWheelEvent() functions. (#4858)
+- Backends: OpenGL3: Fixed a buffer overflow in imgui_impl_opengl3_loader.h init (added in 1.86). (#4468, #4830) [@dymk]
+  It would generally not have noticeable side-effect at runtime but would be detected by runtime checkers.
+- Backends: Metal: Added Apple Metal C++ API support. (#4824, #4746) [@luigifcruz]
+  Enable with '#define IMGUI_IMPL_METAL_CPP' in your imconfig.h file.
+- Backends: Metal: Ignore ImDrawCmd where ElemCount == 0, which are normally not emitted by the library but
+  can theorically be created by user code manipulating a ImDrawList. (#4857)
+- Backends: OSX: Added basic Platform IME support. (#3108, #2598) [@liuliu]
+- Backends: OSX: Fix Game Controller nav mapping to use shoulder for both focusing and tweak speed. (#4759)
+- Backends: WebGPU: Fixed incorrect size parameters in wgpuRenderPassEncoderSetIndexBuffer() and
+  wgpuRenderPassEncoderSetVertexBuffer() calls. (#4891) [@FeepsDev]
 
 
 -----------------------------------------------------------------------
