@@ -1062,8 +1062,8 @@ void ImGui::TableUpdateLayout(ImGuiTable* table)
 
         // Mark column as SkipItems (ignoring all items/layout)
         column->IsSkipItems = !column->IsEnabled || table->HostSkipItems;
-        // if (column->IsSkipItems)
-        //     IM_ASSERT(!is_visible);
+        if (column->IsSkipItems)
+            IM_ASSERT(!is_visible);
 
         // Update status flags
         column->Flags |= ImGuiTableColumnFlags_IsEnabled;
